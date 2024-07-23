@@ -160,6 +160,9 @@ class LiveHardwareModel(QuantumHardwareModel):
     def create_engine(self):
         return LiveDeviceEngine(self)
 
+    def create_unsafe_engine(self):
+        return UnsafeExecutionEngine(self)
+
     def add_device(self, device):
         if isinstance(device, Instrument):
             self.add_instrument(device)
@@ -427,3 +430,17 @@ class LiveDeviceEngine(QuantumExecutionEngine):
                         raise ValueError(
                             "Mid-circuit measurements currently unable to be used."
                         )
+
+
+class UnsafeExecutionEngine(LiveDeviceEngine):
+    """
+    An engine that intentionally skips slow phases such as optimisation and validation.
+    The benefit is to improve runtime for experienced users.
+    Use only if you know what you're doing.
+    """
+
+    def optimize(self, instructions):
+        pass
+
+    def validate(self, instructions: List[Instruction]):
+        pass
