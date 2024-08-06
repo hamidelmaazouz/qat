@@ -1,4 +1,8 @@
 class Constants:
+    MAX_REGISTER_VALUE = 2**32 - 1
+    """
+    A register contains a 32-bit unsigned integer 
+    """
     IMMEDIATE_MAX_WAIT_TIME = pow(2, 16) - 4
     """Max size of wait instruction immediates in Q1ASM programs. Max value allowed by
     assembler is 2**16-1, but this is the largest that is a multiple of 4 ns."""

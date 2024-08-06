@@ -2,9 +2,13 @@ from typing import Dict
 
 import numpy as np
 
+from qat.purr.compiler.ir.pass_pipeline import PassManager
 from qat.purr.backends.live import LiveDeviceEngine, LiveHardwareModel
 from qat.purr.backends.live_devices import ControlHardware
+from qat.purr.backends.qblox.analysis import CFGAnalysis, QuantumTargetAnalysis
 from qat.purr.backends.qblox.codegen import QbloxEmitter
+from qat.purr.backends.qblox.optimisation import ScopeBalancing, SweepDecomposition
+from qat.purr.backends.qblox.validation import ScopeBalanceValidation
 from qat.purr.backends.utilities import get_axis_map
 from qat.purr.compiler.emitter import QatFile
 from qat.purr.compiler.execution import SweepIterator
@@ -29,6 +33,17 @@ class QbloxLiveHardwareModel(LiveHardwareModel):
         for channel in self.physical_channels.values():
             config = channel.config
             config.sequencers = {int(k): v for k, v in config.sequencers.items()}
+
+    def build_pass_pipeline(self):
+        pm = PassManager()
+
+        pm.add(QuantumTargetAnalysis())
+        pm.add(SweepDecomposition())
+        pm.add(ScopeBalancing())
+        pm.add(ScopeBalanceValidation())
+        pm.add(CFGAnalysis())
+
+        return pm
 
 
 class QbloxLiveEngine(LiveDeviceEngine):
