@@ -1,7 +1,7 @@
 from typing import List
 
-from qat.purr.compiler.control_flow.instructions import EndRepeat, EndSweep
 from qat.purr.compiler.instructions import DeviceUpdate, Instruction, Repeat, Sweep
+from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
 
 
 class BasicBlock:

@@ -10,6 +10,9 @@ from qat.purr.compiler.emitter import QatFile
 from qat.purr.compiler.execution import SweepIterator
 from qat.purr.compiler.instructions import AcquireMode
 from qat.purr.compiler.interrupt import NullInterrupt
+from qat.purr.backends.qblox.analysis import CtrlHwAnalysis, QuantumTargetAnalysis
+from qat.purr.backends.concept import PassManager
+from qat.purr.backends.qblox.transform import ScopeBalancing, SweepDecomposition
 
 
 class QbloxLiveHardwareModel(LiveHardwareModel):
@@ -29,6 +32,13 @@ class QbloxLiveHardwareModel(LiveHardwareModel):
         for channel in self.physical_channels.values():
             config = channel.config
             config.sequencers = {int(k): v for k, v in config.sequencers.items()}
+
+    def build_optimisation_pipeline(self):
+        pm = PassManager()
+        pm.add(QuantumTargetAnalysis())
+        pm.add(SweepDecomposition())
+        pm.add(ScopeBalancing())
+        pm.add(CtrlHwAnalysis())
 
 
 class QbloxLiveEngine(LiveDeviceEngine):

@@ -6,7 +6,7 @@ from typing import List, Optional, TypeVar, Union
 
 import numpy
 
-from qat.purr.compiler.builders import InstructionBuilder, QuantumInstructionBuilder
+from qat.purr.compiler.builders import QuantumInstructionBuilder
 from qat.purr.compiler.config import (
     CalibrationArguments,
     CompilerConfig,
@@ -193,16 +193,20 @@ class QuantumRuntime(MetricsMixin):
         if self.engine is None:
             raise ValueError("No execution engine available.")
 
-        if isinstance(instructions, InstructionBuilder):
-            instructions = instructions.instructions
+        # if isinstance(instructions, InstructionBuilder):
+        #     instructions = instructions.instructions
+        #
+        # if instructions is None or not any(instructions):
+        #     raise ValueError(
+        #         "No instructions passed to the process or stored for execution."
+        #     )
 
-        if instructions is None or not any(instructions):
-            raise ValueError(
-                "No instructions passed to the process or stored for execution."
-            )
+        optimisation_manager = self.model.build_optimisation_pipeline()
+        instructions = optimisation_manager.run(instructions)
 
-        instructions = self.engine.optimize(instructions)
-        self.engine.validate(instructions)
+        validation_manager = self.model.build_validation_pipeline()
+        validation_manager.run(instructions)
+
         self.record_metric(
             MetricsType.OptimizedInstructionCount, opt_inst_count := len(instructions)
         )

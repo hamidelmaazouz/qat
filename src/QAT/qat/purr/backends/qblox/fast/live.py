@@ -4,7 +4,6 @@ import numpy as np
 
 from qat.purr.backends.qblox.fast.codegen import FastQbloxEmitter
 from qat.purr.backends.qblox.live import QbloxLiveEngine
-from qat.purr.compiler.control_flow.instructions import EndRepeat, EndSweep
 from qat.purr.compiler.instructions import (
     DeviceUpdate,
     Instruction,
@@ -13,6 +12,7 @@ from qat.purr.compiler.instructions import (
     SweepValue,
 )
 from qat.purr.compiler.interrupt import Interrupt, NullInterrupt
+from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
 from qat.purr.utils.logger import get_default_logger
 from qat.purr.utils.logging_utils import log_duration
 

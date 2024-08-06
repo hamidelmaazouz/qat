@@ -188,6 +188,20 @@ class QuantumHardwareModel(HardwareModel, Calibratable):
 
         return QuantumInstructionBuilder(self)
 
+    def build_optimisation_pipeline(self):
+        """
+        A pipeline of transforms and analysis passes that will be applied on the IR.
+        Returns a PassManager.
+        """
+        pass
+
+    def build_validation_pipeline(self):
+        """
+        A pipeline of validation passes that will be run on the IR.
+        Returns a PassManager.
+        """
+        pass
+
     def resolve_qb_pulse_channel(
         self, chanbit: Union[Qubit, PulseChannel]
     ) -> Tuple[Qubit, PulseChannel]:
