@@ -1,7 +1,6 @@
 from typing import List
 
-from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
-from qat.purr.compiler.instructions import DeviceUpdate, Instruction, Repeat, Sweep
+from qat.purr.compiler.instructions import Instruction
 
 
 class BasicBlock:
@@ -95,80 +94,3 @@ class DfsTraversal:
 class EmitterMixin:
     def __init__(self, instructions: List[Instruction]):
         self.instructions = instructions
-
-    def build_cfg(self, cfg: ControlFlowGraph):
-        """
-        Recursively looks (re)discovers headers and new flow information.
-        """
-
-        flow = [(e.src.head(), e.dest.head()) for e in cfg.edges]
-        headers = sorted([n.head() for n in cfg.nodes]) or [
-            i
-            for i, inst in enumerate(self.instructions)
-            if isinstance(inst, (Sweep, Repeat, EndSweep, EndRepeat))
-        ]
-        if headers[0] != 0:
-            headers.insert(0, 0)
-
-        next_flow = set(flow)
-        next_headers = set(headers)
-        for i, h in enumerate(headers):
-            inst_at_h = self.instructions[h]
-            src = cfg.get_or_create_node(h)
-            if isinstance(inst_at_h, Repeat):
-                next_headers.add(h + 1)
-                next_flow.add((h, h + 1))
-                dest = cfg.get_or_create_node(h + 1)
-                cfg.get_or_create_edge(src, dest)
-            elif isinstance(inst_at_h, Sweep):
-                s = next(
-                    (
-                        s
-                        for s, inst in enumerate(self.instructions[h + 1 :])
-                        if not isinstance(inst, DeviceUpdate)
-                    )
-                )
-                next_headers.add(s + h + 1)
-                next_flow.add((h, s + h + 1))
-                src.indices.extend(range(src.tail() + 1, s + h + 1))
-                dest = cfg.get_or_create_node(s + h + 1)
-                cfg.get_or_create_edge(src, dest)
-            elif isinstance(inst_at_h, (EndSweep, EndRepeat)):
-                if h < len(self.instructions) - 1:
-                    next_headers.add(h + 1)
-                    next_flow.add((h, h + 1))
-                    dest = cfg.get_or_create_node(h + 1)
-                    cfg.get_or_create_edge(src, dest)
-                type = Sweep if isinstance(inst_at_h, EndSweep) else Repeat
-                p = next(
-                    (p for p in headers[i::-1] if isinstance(self.instructions[p], type))
-                )
-                next_headers.add(p)
-                next_flow.add((h, p))
-                dest = cfg.get_or_create_node(p)
-                cfg.get_or_create_edge(src, dest)
-            else:
-                k = next(
-                    (
-                        s
-                        for s, inst in enumerate(self.instructions[h + 1 :])
-                        if isinstance(inst, (Sweep, Repeat, EndSweep, EndRepeat))
-                    ),
-                    None,
-                )
-                if k:
-                    next_headers.add(k + h + 1)
-                    next_flow.add((h, k + h + 1))
-                    src.indices.extend(range(src.tail() + 1, k + h + 1))
-                    dest = cfg.get_or_create_node(k + h + 1)
-                    cfg.get_or_create_edge(src, dest)
-
-        if next_headers == set(headers) and next_flow == set(flow):
-            return
-
-        self.build_cfg(cfg)
-
-    def emit_cfg(self) -> ControlFlowGraph:
-        cfg = ControlFlowGraph()
-        self.build_cfg(cfg)
-        return cfg

@@ -41,8 +41,9 @@ class PassResultSet:
     def add_result(self, ir_id, pass_id, value):
         return self._data.setdefault(PassResultKey(ir_id, pass_id), value)
 
-    def get_result(self, ir_id, pass_id):
-        key = next((rk for rk in self._data if rk.ir_id == ir_id and rk.pass_id == pass_id))
+    def get_result(self, pass_id):
+        key = next((rk for rk in self._data if rk.pass_id == pass_id))
+        return self._data[key]
 
 
 class PassConcept(ABC):

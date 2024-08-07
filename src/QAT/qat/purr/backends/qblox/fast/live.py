@@ -31,7 +31,7 @@ class FastQbloxLiveEngine(QbloxLiveEngine):
         analyses = self.run_pass_pipeline(builder)
 
         with log_duration("QPU returned results in {} seconds."):
-            packages = FastQbloxEmitter(builder, analyses).emit_packages()
+            packages = FastQbloxEmitter(analyses).emit_packages()
             self.model.control_hardware.set_data(packages)
             playback_results: Dict[str, np.ndarray] = (
                 self.model.control_hardware.start_playback(None, None)

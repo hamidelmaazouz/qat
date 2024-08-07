@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Set, Tuple
 
 import numpy as np
 
+from qat.purr.backends.concept import PassResultSet
 from qat.purr.backends.qblox.codegen import (
     QbloxPackage,
     calculate_duration,
@@ -14,7 +15,7 @@ from qat.purr.backends.qblox.codegen import (
 )
 from qat.purr.backends.qblox.config import SequencerConfig
 from qat.purr.backends.qblox.constants import Constants
-from qat.purr.backends.qblox.graph import DfsTraversal, EmitterMixin
+from qat.purr.backends.qblox.graph import DfsTraversal, EmitterMixin, ControlFlowGraph
 from qat.purr.backends.qblox.ir import SequenceBuilder
 from qat.purr.backends.utilities import evaluate_shape
 from qat.purr.compiler.analysis import Attribute, extract_iter_bounds
@@ -75,33 +76,16 @@ class LabelManager:
 
 
 class FastQbloxEmitter(DfsTraversal, EmitterMixin):
-    def __init__(
-        self,
-        instructions: List[Instruction],
-    ):
+    def __init__(self, analyses: PassResultSet):
         super().__init__()
-        super(DfsTraversal, self).__init__(instructions)
-        self.contexts: Dict[PulseChannel, FastQbloxContext] = self._init_contexts()
+        self.targets = analyses.get_result("QUANTUM_TARGETS")
+        self.cfg: ControlFlowGraph = analyses.get_result("CFG")
+        self.contexts: Dict[PulseChannel, FastQbloxContext] = {
+            t: FastQbloxContext() for t in self.targets
+        }
 
     def _init_contexts(self) -> Dict:
         targets: Set[PulseChannel] = set()
-
-        for inst in self.instructions:
-            if isinstance(inst, QuantumInstruction):
-                if isinstance(inst, PostProcessing):
-                    for qt in inst.quantum_targets:
-                        if isinstance(qt, Acquire):
-                            targets.update(qt.quantum_targets)
-                        else:
-                            targets.add(qt)
-                else:
-                    targets.update(inst.quantum_targets)
-
-        for t in targets:
-            if not isinstance(t, PulseChannel):
-                raise ValueError(f"{t} is not a PulseChannel")
-
-        contexts = {t: FastQbloxContext() for t in targets}
 
         for i, inst in enumerate(self.instructions):
             if isinstance(inst, Sweep):
@@ -111,7 +95,6 @@ class FastQbloxEmitter(DfsTraversal, EmitterMixin):
                     context.allocate_label(inst, name)
 
                 inst_iter = iter(self.instructions[i + 1 :])
-                targets.clear()
                 while (du_inst := next(inst_iter, None)) is not None:
                     if not isinstance(du_inst, DeviceUpdate):
                         break

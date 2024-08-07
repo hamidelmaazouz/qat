@@ -1,6 +1,6 @@
 import pytest
 
-from qat.purr.backends.qblox.fast.codegen import EmitterMixin, FastQbloxEmitter
+from qat.purr.backends.qblox.fast.codegen import FastQbloxEmitter
 from qat.purr.backends.qblox.fast.live import FastQbloxLiveEngine
 from qat.purr.utils.logger import get_default_logger
 from src.tests.qblox.builder_nuggets import resonator_spect
