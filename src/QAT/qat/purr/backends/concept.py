@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 
 @dataclass(frozen=True)
@@ -23,9 +23,9 @@ class PassResultSet:
     """
 
     def __init__(self, *tuples):
-        self._data: Dict[PassResultKey, Any] = dict(
-            [(PassResultKey(t[0], t[1]), t[2]) for t in tuples]
-        ) if tuples else {}
+        self._data: Dict[PassResultKey, Any] = {}
+        for t in tuples:
+            self.add_result(t[0], t[1], t[2])
 
     def update(self, other_rs):
         if not isinstance(other_rs, PassResultSet):
@@ -33,6 +33,12 @@ class PassResultSet:
                 f"Invalid type, expected PassResultSet, but got {type(other_rs)}"
             )
         self._data.update(other_rs._data)
+
+    def add_result(self, ir_id, pass_id, value):
+        return self._data.setdefault(PassResultKey(ir_id, pass_id), value)
+
+    def get_result(self, ir_id, pass_id):
+        key = next((rk for rk in self._data if rk.ir_id == ir_id and rk.pass_id == pass_id))
 
 
 class PassConcept(ABC):

@@ -4,9 +4,7 @@ import numpy as np
 
 from qat.purr.backends.qblox.fast.codegen import FastQbloxEmitter
 from qat.purr.backends.qblox.live import QbloxLiveEngine
-from qat.purr.compiler.instructions import (
-    Instruction,
-)
+from qat.purr.compiler.instructions import Instruction
 from qat.purr.compiler.interrupt import Interrupt, NullInterrupt
 from qat.purr.utils.logger import get_default_logger
 from qat.purr.utils.logging_utils import log_duration
@@ -30,7 +28,7 @@ class FastQbloxLiveEngine(QbloxLiveEngine):
         analyses = pass_manager.run(builder)
 
         with log_duration("QPU returned results in {} seconds."):
-            packages = FastQbloxEmitter(builder).emit_packages()
+            packages = FastQbloxEmitter(builder, analyses).emit_packages()
             self.model.control_hardware.set_data(packages)
             playback_results: Dict[str, np.ndarray] = (
                 self.model.control_hardware.start_playback(None, None)

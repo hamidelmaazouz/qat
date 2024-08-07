@@ -1,5 +1,5 @@
 from qat.purr.backends.concept import PassResultSet
-from qat.purr.backends.qblox.instructions import EndSweep, EndRepeat
+from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
 from qat.purr.compiler.builders import InstructionBuilder
 from qat.purr.compiler.instructions import Repeat, Sweep, SweepValue
 from qat.purr.utils.algorithm import stable_partition
@@ -26,8 +26,7 @@ class SweepDecomposition(TransformPass):
                     result.append(Sweep(SweepValue(name, value)))
             else:
                 result.append(inst)
-        builder.instructions.clear()
-        builder.add(result)
+        builder.instructions = result
 
 
 class ScopeAnalysis(TransformPass):
@@ -45,7 +44,8 @@ class ScopeAnalysis(TransformPass):
             builder.instructions, lambda inst: isinstance(inst, (Sweep, Repeat))
         )
 
-        delimiters = [EndSweep() if isinstance(inst, Sweep) else EndRepeat() for inst in head]
+        delimiters = [
+            EndSweep() if isinstance(inst, Sweep) else EndRepeat() for inst in head
+        ]
 
-        builder.instructions.clear()
-        builder.add(head + tail + delimiters[::-1])
+        builder.instructions = head + tail + delimiters[::-1]

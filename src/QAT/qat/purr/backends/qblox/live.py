@@ -5,7 +5,7 @@ import numpy as np
 from qat.purr.backends.concept import PassManager
 from qat.purr.backends.live import LiveDeviceEngine, LiveHardwareModel
 from qat.purr.backends.live_devices import ControlHardware
-from qat.purr.backends.qblox.analysis import QuantumTargetAnalysis, CFGAnalysis
+from qat.purr.backends.qblox.analysis import CFGAnalysis, QuantumTargetAnalysis
 from qat.purr.backends.qblox.codegen import QbloxEmitter
 from qat.purr.backends.qblox.optimisation import ScopeAnalysis, SweepDecomposition
 from qat.purr.backends.qblox.validation import ScopeBalanceValidation

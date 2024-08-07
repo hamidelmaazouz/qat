@@ -7,8 +7,6 @@ from qat.purr.compiler.instructions import DeviceUpdate, Instruction, Repeat, Sw
 class BasicBlock:
     def __init__(self, indices=None):
         self.indices: List[int] = indices or []
-        self.is_entry = False
-        self.is_exit = self.is_entry  # TODO - implement properly
 
     def head(self):
         if self.indices:
@@ -37,15 +35,7 @@ class ControlFlowGraph:
     def __init__(self, nodes=None, edges=None):
         self.nodes: List[BasicBlock] = nodes or []
         self.edges: List[Flow] = edges or []
-        self.has_entry = False
-
-    @property
-    def entry(self):
-        return next((b for b in self.nodes if b.is_entry))
-
-    @property
-    def exit(self):
-        return next((b for b in self.nodes if b.is_exit))
+        self.entry = None
 
     def get_or_create_node(self, header: int) -> BasicBlock:
         node = next((n for n in self.nodes if n.head() == header), None)
@@ -53,10 +43,7 @@ class ControlFlowGraph:
             node = BasicBlock([header])
             self.nodes.append(node)
 
-        if not self.has_entry:
-            self.has_entry = True
-            node.is_entry = True
-
+        self.entry = self.entry or node
         return node
 
     def get_or_create_edge(self, src: BasicBlock, dest: BasicBlock) -> Flow:

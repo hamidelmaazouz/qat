@@ -3,6 +3,7 @@ from typing import List
 
 import numpy as np
 
+from qat.purr.backends.concept import PassResultSet
 from qat.purr.compiler.builders import InstructionBuilder
 from qat.purr.compiler.devices import MaxPulseLength, PulseChannel, Qubit
 from qat.purr.compiler.instructions import (
@@ -19,6 +20,10 @@ from qat.purr.compiler.instructions import (
 
 class ValidationPass:
     def run(self, ir, *args, **kwargs):
+        self.do_run(ir, args, kwargs)
+        return PassResultSet()
+
+    def do_run(self, ir, *args, **kwargs):
         pass
 
 
@@ -26,7 +31,7 @@ class CtrlHwValidation(ValidationPass):
     def __init__(self, max_instruction_len):
         self.max_instruction_len = max_instruction_len
 
-    def run(self, builder: InstructionBuilder, *args, **kwargs):
+    def do_run(self, builder: InstructionBuilder, *args, **kwargs):
         instruction_length = len(builder.instructions)
         if instruction_length > self.max_instruction_len:
             raise ValueError(
@@ -69,7 +74,7 @@ class PostProcessingValidation(ValidationPass):
     def __init__(self, model):
         self.model = model
 
-    def run(self, builder: InstructionBuilder, *args, **kwargs):
+    def do_run(self, builder: InstructionBuilder, *args, **kwargs):
         consumed_qubits: List[str] = []
         for inst in builder.instructions:
             if isinstance(inst, PostProcessing):

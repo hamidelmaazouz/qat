@@ -4,7 +4,7 @@ from qat.purr.compiler.instructions import Repeat, Sweep
 
 
 class ScopeBalanceValidation(ValidationPass):
-    def run(self, builder, *args, **kwargs):
+    def do_run(self, builder, *args, **kwargs):
         """
         Repeat and Sweep scopes are valid if they have a start and end delimiters and if the delimiters
         are balanced.
