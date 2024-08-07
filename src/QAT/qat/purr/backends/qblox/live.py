@@ -12,7 +12,6 @@ from qat.purr.compiler.instructions import AcquireMode
 from qat.purr.compiler.interrupt import NullInterrupt
 from qat.purr.backends.qblox.analysis import CtrlHwAnalysis, QuantumTargetAnalysis
 from qat.purr.backends.concept import PassManager
-from qat.purr.backends.qblox.transform import ScopeBalancing, SweepDecomposition
 
 
 class QbloxLiveHardwareModel(LiveHardwareModel):

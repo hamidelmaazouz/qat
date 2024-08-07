@@ -86,6 +86,10 @@ class FastQbloxLiveEngine(QbloxLiveEngine):
         """Executes this qat file against this current hardware."""
         self._model_exists()
 
+        opt_manager = self.model.build_optimisation_pipeline()
+        vdn_manager = self.model.build_validation_pipeline()
+
+
         with log_duration("QPU returned results in {} seconds."):
             instructions = self.optimize(instructions)
             packages = FastQbloxEmitter(instructions).emit_packages()
