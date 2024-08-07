@@ -11,5 +11,5 @@ class TestFastQbloxLiveEngine:
         builder = resonator_spect(model)
         engine = FastQbloxLiveEngine(model)
         model.control_hardware.dump_sequence = True
-        results = engine.execute(builder.instructions)
+        results = engine.execute(builder)
         assert results is not None

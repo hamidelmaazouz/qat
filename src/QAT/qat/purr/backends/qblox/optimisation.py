@@ -1,3 +1,5 @@
+from qat.purr.backends.concept import PassResultSet
+from qat.purr.backends.qblox.instructions import EndSweep, EndRepeat
 from qat.purr.compiler.builders import InstructionBuilder
 from qat.purr.compiler.instructions import Repeat, Sweep, SweepValue
 from qat.purr.utils.algorithm import stable_partition
@@ -6,7 +8,7 @@ from qat.purr.utils.algorithm import stable_partition
 class TransformPass:
     def run(self, ir, *args, **kwargs):
         self.do_run(ir, args, kwargs)
-        return set()
+        return PassResultSet()
 
     def do_run(self, ir, *args, **kwargs):
         pass
@@ -28,7 +30,7 @@ class SweepDecomposition(TransformPass):
         builder.add(result)
 
 
-class ScopeBalancing(TransformPass):
+class ScopeAnalysis(TransformPass):
     def do_run(self, builder: InstructionBuilder, *args):
         """
         Bubbles up all sweeps and repeats to the beginning of the list.
@@ -43,5 +45,7 @@ class ScopeBalancing(TransformPass):
             builder.instructions, lambda inst: isinstance(inst, (Sweep, Repeat))
         )
 
+        delimiters = [EndSweep() if isinstance(inst, Sweep) else EndRepeat() for inst in head]
+
         builder.instructions.clear()
-        builder.add(head + tail)
+        builder.add(head + tail + delimiters[::-1])

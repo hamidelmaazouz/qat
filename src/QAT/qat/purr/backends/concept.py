@@ -1,9 +1,15 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Tuple
 
 
-class PassResultCache:
+@dataclass(frozen=True)
+class PassResultKey:
+    ir_id: int
+    pass_id: str
+
+
+class PassResultSet:
     """
     Models a collection of pass results with caching and aggregation capabilities.
 
@@ -16,15 +22,17 @@ class PassResultCache:
     pass results
     """
 
-    def __init__(self):
-        self._data: Dict[int, Any] = {}
+    def __init__(self, *tuples):
+        self._data: Dict[PassResultKey, Any] = dict(
+            [(PassResultKey(t[0], t[1]), t[2]) for t in tuples]
+        ) if tuples else {}
 
-
-@dataclass
-class PassResult:
-    ir_id: int
-    pass_id: str
-    value: Any
+    def update(self, other_rs):
+        if not isinstance(other_rs, PassResultSet):
+            raise ValueError(
+                f"Invalid type, expected PassResultSet, but got {type(other_rs)}"
+            )
+        self._data.update(other_rs._data)
 
 
 class PassConcept(ABC):
@@ -33,7 +41,7 @@ class PassConcept(ABC):
     """
 
     @abstractmethod
-    def run(self, ir, *args, **kwargs) -> Set[PassResult]:
+    def run(self, ir, *args, **kwargs) -> PassResultSet:
         pass
 
     @abstractmethod
@@ -77,13 +85,14 @@ class PassManager(PassInfoMixin):
     """
 
     def __init__(self):
-        self.passes: List = []
+        self.passes: List[PassModel] = []
 
     def run(self, ir, *args, **kwargs):
-        results = set()
+        global_rs = PassResultSet()
         for p in self.passes:
-            results.add(p.run(ir, args, kwargs))
-        return results
+            pass_rs = p.run(ir, args, kwargs)
+            global_rs.update(pass_rs)
+        return global_rs
 
     def add(self, pass_obj):
         self.passes.append(PassModel(pass_obj))

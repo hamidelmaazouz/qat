@@ -188,16 +188,9 @@ class QuantumHardwareModel(HardwareModel, Calibratable):
 
         return QuantumInstructionBuilder(self)
 
-    def build_optimisation_pipeline(self):
+    def build_pass_pipeline(self):
         """
-        A pipeline of transforms and analysis passes that will be applied on the IR.
-        Returns a PassManager.
-        """
-        pass
-
-    def build_validation_pipeline(self):
-        """
-        A pipeline of validation passes that will be run on the IR.
+        A pipeline of transform, analysis, and validation passes that will be run on the IR.
         Returns a PassManager.
         """
         pass

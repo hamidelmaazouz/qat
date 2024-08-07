@@ -1,9 +1,9 @@
-from qat.purr.compiler.instructions import Sweep, Repeat
-from qat.purr.backends.qblox.instructions import EndSweep, EndRepeat
+from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
 from qat.purr.backends.validation import ValidationPass
+from qat.purr.compiler.instructions import Repeat, Sweep
 
 
-class ScopeValidation(ValidationPass):
+class ScopeBalanceValidation(ValidationPass):
     def run(self, builder, *args, **kwargs):
         """
         Repeat and Sweep scopes are valid if they have a start and end delimiters and if the delimiters

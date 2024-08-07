@@ -14,6 +14,7 @@ from qat.purr.backends.qblox.codegen import (
 )
 from qat.purr.backends.qblox.config import SequencerConfig
 from qat.purr.backends.qblox.constants import Constants
+from qat.purr.backends.qblox.graph import DfsTraversal, EmitterMixin
 from qat.purr.backends.qblox.ir import SequenceBuilder
 from qat.purr.backends.utilities import evaluate_shape
 from qat.purr.compiler.analysis import Attribute, extract_iter_bounds
@@ -38,7 +39,6 @@ from qat.purr.compiler.instructions import (
     Variable,
     Waveform,
 )
-from qat.purr.backends.qblox.graph import DfsTraversal, EmitterMixin
 from qat.purr.utils.logger import get_default_logger
 
 log = get_default_logger()

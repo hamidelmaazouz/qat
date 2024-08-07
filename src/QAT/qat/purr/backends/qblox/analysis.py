@@ -1,5 +1,8 @@
 import numpy as np
 
+from qat.purr.backends.concept import PassResultSet
+from qat.purr.backends.qblox.graph import ControlFlowGraph
+from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
 from qat.purr.compiler.builders import InstructionBuilder
 from qat.purr.compiler.instructions import (
     Acquire,
@@ -9,9 +12,6 @@ from qat.purr.compiler.instructions import (
     Repeat,
     Sweep,
 )
-from qat.purr.backends.concept import PassResult
-from qat.purr.backends.qblox.graph import ControlFlowGraph
-from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
 
 
 class AnalysisPass:
@@ -25,20 +25,18 @@ class QuantumTargetAnalysis(AnalysisPass):
         Collects quantum targets AOT. Useful for subsequent analysis/transform passes
         as well as for backend code generator.
         """
-        result = PassResult(
-            ir_id=hash(builder), pass_id="QUANTUM_TARGET_ANALYSIS", value=set()
-        )
+        result = set()
         for inst in builder.instructions:
             if isinstance(inst, QuantumInstruction):
                 if isinstance(inst, PostProcessing):
                     for qt in inst.quantum_targets:
                         if isinstance(qt, Acquire):
-                            result.value.update(qt.quantum_targets)
+                            result.update(qt.quantum_targets)
                         else:
-                            result.value.add(qt)
+                            result.add(qt)
                 else:
-                    result.value.update(inst.quantum_targets)
-        return result
+                    result.update(inst.quantum_targets)
+        return PassResultSet((hash(builder), "QUANTUM_TARGET_ANALYSIS", result))
 
 
 class IterBoundsAnalysis(AnalysisPass):
@@ -47,9 +45,7 @@ class IterBoundsAnalysis(AnalysisPass):
         Analyses loop bounds from given value if it's linearly and evenly
         spaced or fails otherwise.
         """
-        result = PassResult(
-            ir_id=hash(builder), pass_id="ITER_BOUNDS_ANALYSIS", value=dict()
-        )
+        result = {}
         for inst in builder.instructions:
             if isinstance(inst, Sweep):
                 name, sweep_value = next(iter(inst.variables.items()))
@@ -75,43 +71,22 @@ class IterBoundsAnalysis(AnalysisPass):
                 if not np.isclose(step, (end - start) / (count - 1)):
                     raise ValueError(f"Not a regularly partitioned space {value}")
 
-                result.value[inst] = start, step, end, count
+                result[inst] = start, step, end, count
             elif isinstance(inst, Repeat):
                 start = 0
                 step = 1
                 end = inst.repeat_count
                 count = inst.repeat_count
-                result.value[inst] = start, step, end, count
+                result[inst] = start, step, end, count
 
-            return result
-
-
-class CtrlHwAnalysis(AnalysisPass):
-    """
-    Perform analyses such as:
-    - Lowerability: What can be run on a control hardware stack
-    - Batching: After all loop analysis, how many levels or a loop nest can run on the control hardware
-    """
-
-    def run(self, builder: InstructionBuilder, *args, **kwargs):
-        pass
-
-
-class TimelineAnalysis(AnalysisPass):
-    """
-    Performs analyses necessary for dynamic allocation of control hardware resources to logical channels.
-    Loosely speaking, it aims at understanding when exactly instructions are invoked (with **full awareness**
-    of control flow (especially loops)) and whether prior resources could be freed up.
-    """
+            return PassResultSet((hash(builder), "ITER_BOUNDS_ANALYSIS", result))
 
 
 class CFGAnalysis(AnalysisPass):
     def run(self, builder: InstructionBuilder, *args, **kwargs):
-        result = PassResult(
-            ir_id=hash(builder), pass_id="CGG_ANALYSIS", value=ControlFlowGraph()
-        )
-        self._build_cfg(builder, result.value)
-        return result
+        cfg = ControlFlowGraph()
+        self._build_cfg(builder, cfg)
+        return PassResultSet((hash(builder), "CFG_ANALYSIS", ControlFlowGraph()))
 
     def _build_cfg(self, builder: InstructionBuilder, cfg: ControlFlowGraph):
         """
@@ -184,3 +159,22 @@ class CFGAnalysis(AnalysisPass):
             return
 
         self._build_cfg(builder, cfg)
+
+
+class CtrlHwAnalysis(AnalysisPass):
+    """
+    Perform analyses such as:
+    - Lowerability: What can be run on a control hardware stack
+    - Batching: After all loop analysis, how many levels or a loop nest can run on the control hardware
+    """
+
+    def run(self, builder: InstructionBuilder, *args, **kwargs):
+        pass
+
+
+class TimelineAnalysis(AnalysisPass):
+    """
+    Performs analyses necessary for dynamic allocation of control hardware resources to logical channels.
+    Loosely speaking, it aims at understanding when exactly instructions are invoked (with **full awareness**
+    of control flow (especially loops)) and whether prior resources could be freed up.
+    """
