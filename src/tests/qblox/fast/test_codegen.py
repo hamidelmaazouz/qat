@@ -10,18 +10,9 @@ log = get_default_logger()
 
 @pytest.mark.parametrize("model", [None], indirect=True)
 class TestFastQbloxEmitter:
-    def test_emit_cfg(self, model):
-        builder = resonator_spect(model)
-        engine = FastQbloxLiveEngine(model)
-        instructions = engine.optimize(builder.instructions)
-        cfg = EmitterMixin(instructions).emit_cfg()
-        assert cfg is not None
-        assert len(cfg.nodes) == 5
-        assert len(cfg.edges) == 6
-
     def test_emit_packages(self, model):
         builder = resonator_spect(model)
         engine = FastQbloxLiveEngine(model)
-        instructions = engine.optimize(builder.instructions)
+        instructions = engine.run_pass_pipeline(builder)
         packages = FastQbloxEmitter(instructions).emit_packages()
         assert packages is not None

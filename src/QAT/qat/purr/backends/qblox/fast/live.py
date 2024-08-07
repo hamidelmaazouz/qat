@@ -20,12 +20,15 @@ class FastQbloxLiveEngine(QbloxLiveEngine):
     def validate(self, instructions: List[Instruction]):
         pass
 
+    def run_pass_pipeline(self, builder):
+        pass_manager = self.model.build_pass_pipeline()
+        return pass_manager.run(builder)
+
     def _common_execute(self, builder, interrupt: Interrupt = NullInterrupt()):
         """Executes this qat file against this current hardware."""
         self._model_exists()
 
-        pass_manager = self.model.build_pass_pipeline()
-        analyses = pass_manager.run(builder)
+        analyses = self.run_pass_pipeline(builder)
 
         with log_duration("QPU returned results in {} seconds."):
             packages = FastQbloxEmitter(builder, analyses).emit_packages()

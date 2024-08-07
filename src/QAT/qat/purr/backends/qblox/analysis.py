@@ -93,9 +93,9 @@ class CFGAnalysis(AnalysisPass):
         return "CFG"
 
     def run(self, builder: InstructionBuilder, *args, **kwargs):
-        cfg = ControlFlowGraph()
-        self._build_cfg(builder, cfg)
-        return PassResultSet((hash(builder), self.name(), cfg))
+        result = ControlFlowGraph()
+        self._build_cfg(builder, result)
+        return PassResultSet((hash(builder), self.name(), result))
 
     def _build_cfg(self, builder: InstructionBuilder, cfg: ControlFlowGraph):
         """
