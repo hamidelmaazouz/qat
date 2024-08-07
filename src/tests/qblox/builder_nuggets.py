@@ -4,8 +4,8 @@ from qat.purr.compiler.instructions import SweepValue, Variable
 from qat.purr.compiler.runtime import get_builder
 
 
-def resonator_spect(model):
-    qubit = model.get_qubit(0)
+def resonator_spect(model, qubit_index=0):
+    qubit = model.get_qubit(qubit_index)
     measure_channel = qubit.get_measure_channel()
     acquire_channel = qubit.get_acquire_channel()
     assert acquire_channel == measure_channel

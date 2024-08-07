@@ -27,6 +27,10 @@ class PassResultSet:
         for t in tuples:
             self.add_result(t[0], t[1], t[2])
 
+    @property
+    def data(self):
+        return self._data
+
     def update(self, other_rs):
         if not isinstance(other_rs, PassResultSet):
             raise ValueError(

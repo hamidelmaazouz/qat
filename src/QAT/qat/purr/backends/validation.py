@@ -1,9 +1,10 @@
+from abc import abstractmethod
 from numbers import Number
 from typing import List
 
 import numpy as np
 
-from qat.purr.backends.concept import PassResultSet
+from qat.purr.backends.concept import PassInfoMixin, PassResultSet
 from qat.purr.compiler.builders import InstructionBuilder
 from qat.purr.compiler.devices import MaxPulseLength, PulseChannel, Qubit
 from qat.purr.compiler.instructions import (
@@ -18,18 +19,23 @@ from qat.purr.compiler.instructions import (
 )
 
 
-class ValidationPass:
+class ValidationPass(PassInfoMixin):
     def run(self, ir, *args, **kwargs):
         self.do_run(ir, args, kwargs)
         return PassResultSet()
 
+    @abstractmethod
     def do_run(self, ir, *args, **kwargs):
         pass
 
 
 class CtrlHwValidation(ValidationPass):
+
     def __init__(self, max_instruction_len):
         self.max_instruction_len = max_instruction_len
+
+    def name(self):
+        return "CTRL_HW_VALIDATION"
 
     def do_run(self, builder: InstructionBuilder, *args, **kwargs):
         instruction_length = len(builder.instructions)
@@ -71,8 +77,12 @@ class CtrlHwValidation(ValidationPass):
 
 
 class PostProcessingValidation(ValidationPass):
+
     def __init__(self, model):
         self.model = model
+
+    def name(self):
+        return "POSTPROCESSING_VALIDATION"
 
     def do_run(self, builder: InstructionBuilder, *args, **kwargs):
         consumed_qubits: List[str] = []

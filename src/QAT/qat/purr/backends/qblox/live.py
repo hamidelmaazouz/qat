@@ -7,7 +7,7 @@ from qat.purr.backends.live import LiveDeviceEngine, LiveHardwareModel
 from qat.purr.backends.live_devices import ControlHardware
 from qat.purr.backends.qblox.analysis import CFGAnalysis, QuantumTargetAnalysis
 from qat.purr.backends.qblox.codegen import QbloxEmitter
-from qat.purr.backends.qblox.optimisation import ScopeAnalysis, SweepDecomposition
+from qat.purr.backends.qblox.optimisation import ScopeBalancing, SweepDecomposition
 from qat.purr.backends.qblox.validation import ScopeBalanceValidation
 from qat.purr.backends.utilities import get_axis_map
 from qat.purr.compiler.emitter import QatFile
@@ -39,7 +39,7 @@ class QbloxLiveHardwareModel(LiveHardwareModel):
 
         pm.add(QuantumTargetAnalysis())
         pm.add(SweepDecomposition())
-        pm.add(ScopeAnalysis())
+        pm.add(ScopeBalancing())
         pm.add(ScopeBalanceValidation())
         pm.add(CFGAnalysis())
 

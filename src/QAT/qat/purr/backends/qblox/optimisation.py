@@ -1,20 +1,26 @@
-from qat.purr.backends.concept import PassResultSet
+from abc import abstractmethod
+
+from qat.purr.backends.concept import PassInfoMixin, PassResultSet
 from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
 from qat.purr.compiler.builders import InstructionBuilder
 from qat.purr.compiler.instructions import Repeat, Sweep, SweepValue
 from qat.purr.utils.algorithm import stable_partition
 
 
-class TransformPass:
+class TransformPass(PassInfoMixin):
     def run(self, ir, *args, **kwargs):
         self.do_run(ir, args, kwargs)
         return PassResultSet()
 
+    @abstractmethod
     def do_run(self, ir, *args, **kwargs):
         pass
 
 
 class SweepDecomposition(TransformPass):
+    def name(self):
+        return "SWEEP_DECOMPOSITION"
+
     def do_run(self, builder: InstructionBuilder, *args, **kwargs):
         """
         Decomposes complex multi-dim sweeps into simpler one-dim sweeps.
@@ -29,7 +35,10 @@ class SweepDecomposition(TransformPass):
         builder.instructions = result
 
 
-class ScopeAnalysis(TransformPass):
+class ScopeBalancing(TransformPass):
+    def name(self):
+        return "SCOPE_BALANCING"
+
     def do_run(self, builder: InstructionBuilder, *args):
         """
         Bubbles up all sweeps and repeats to the beginning of the list.

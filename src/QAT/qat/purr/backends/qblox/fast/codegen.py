@@ -75,7 +75,10 @@ class LabelManager:
 
 
 class FastQbloxEmitter(DfsTraversal, EmitterMixin):
-    def __init__(self, instructions: List[Instruction], ):
+    def __init__(
+        self,
+        instructions: List[Instruction],
+    ):
         super().__init__()
         super(DfsTraversal, self).__init__(instructions)
         self.contexts: Dict[PulseChannel, FastQbloxContext] = self._init_contexts()
