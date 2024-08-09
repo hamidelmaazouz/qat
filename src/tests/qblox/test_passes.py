@@ -3,15 +3,18 @@ from typing import Set
 import numpy as np
 import pytest
 
-from qat.purr.backends.qblox.analysis import CFGAnalysis, QuantumTargetAnalysis, IterBoundsAnalysis
+from qat.purr.backends.analysis_passes import (
+    CFGAnalysis,
+    IterBoundsAnalysis,
+    QuantumTargetAnalysis,
+)
+from qat.purr.backends.codegen import CodegenPassRegistry
+from qat.purr.backends.optimisation_passes import ScopeBalancing, SweepDecomposition
 from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
-from qat.purr.backends.qblox.optimisation import ScopeBalancing, SweepDecomposition
-from qat.purr.backends.qblox.validation import ScopeBalanceValidation
+from qat.purr.backends.verification_passes import ScopeBalanceValidation
 from qat.purr.compiler.instructions import Repeat, Sweep
-from qat.purr.compiler.ir.pass_pipeline import PassRegistry
 from src.tests.qblox.builder_nuggets import resonator_spect
 from src.tests.qblox.utils import ClusterInfo
-
 
 count = 100
 cases = [([1, 2, 4, 10], None), ([-0.1, 0, 0.1, 0.2, 0.3], (-0.1, 0.1, 0.3, 5))] + [
@@ -39,7 +42,7 @@ class TestPassPipeline:
         assert len(rs.data) == 1
         rk, value = next(iter(rs.data.items()))
         assert rk.ir_id == hash(builder)
-        assert rk.pass_id == PassRegistry.QUANTUM_TARGETS
+        assert rk.pass_id == CodegenPassRegistry.QUANTUM_TARGETS
         assert isinstance(value, Set)
         assert len(value) == 3
         assert qubit.get_drive_channel() in value
@@ -89,7 +92,7 @@ class TestPassPipeline:
         assert len(rs.data) == 1
         rk, value = next(iter(rs.data.items()))
         assert rk.ir_id == hash(builder)
-        assert rk.pass_id == PassRegistry.CFG
+        assert rk.pass_id == CodegenPassRegistry.CFG
         assert len(value.nodes) == 5
         assert len(value.edges) == 6
 

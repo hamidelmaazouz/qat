@@ -1,10 +1,8 @@
-from abc import abstractmethod
 from numbers import Number
 from typing import List
 
 import numpy as np
 
-from qat.purr.compiler.ir.pass_base import PassInfoMixin, PassResultSet
 from qat.purr.compiler.builders import InstructionBuilder
 from qat.purr.compiler.devices import MaxPulseLength, PulseChannel, Qubit
 from qat.purr.compiler.instructions import (
@@ -17,25 +15,18 @@ from qat.purr.compiler.instructions import (
     Sweep,
     Variable,
 )
-
-
-class ValidationPass(PassInfoMixin):
-    def run(self, ir, *args, **kwargs):
-        self.do_run(ir, args, kwargs)
-        return PassResultSet()
-
-    @abstractmethod
-    def do_run(self, ir, *args, **kwargs):
-        pass
+from qat.purr.compiler.passbase import ValidationPass
 
 
 class CtrlHwValidation(ValidationPass):
+    """
+    Extracted from QuantumExecutionEngine.validate()
+    Better pass name/id ?
+    """
 
-    def __init__(self, max_instruction_len):
-        self.max_instruction_len = max_instruction_len
-
-    def name(self):
-        return "CTRL_HW_VALIDATION"
+    def __init__(self, engine):
+        # TODO - Move max_instruction_len to the model / control hardware
+        self.max_instruction_len = engine.max_instruction_len
 
     def do_run(self, builder: InstructionBuilder, *args, **kwargs):
         instruction_length = len(builder.instructions)
@@ -77,12 +68,8 @@ class CtrlHwValidation(ValidationPass):
 
 
 class PostProcessingValidation(ValidationPass):
-
     def __init__(self, model):
         self.model = model
-
-    def name(self):
-        return "POSTPROCESSING_VALIDATION"
 
     def do_run(self, builder: InstructionBuilder, *args, **kwargs):
         consumed_qubits: List[str] = []

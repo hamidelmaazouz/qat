@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Set, Tuple
 
 import numpy as np
 
-from qat.purr.compiler.ir.pass_base import PassResultSet
+from qat.purr.backends.codegen import CodegenPassRegistry, DfsTraversal
+from qat.purr.backends.graph import ControlFlowGraph
 from qat.purr.backends.qblox.codegen import (
     QbloxPackage,
     calculate_duration,
@@ -15,10 +16,8 @@ from qat.purr.backends.qblox.codegen import (
 )
 from qat.purr.backends.qblox.config import SequencerConfig
 from qat.purr.backends.qblox.constants import Constants
-from qat.purr.backends.qblox.graph import ControlFlowGraph, DfsTraversal, EmitterMixin
 from qat.purr.backends.qblox.ir import SequenceBuilder
 from qat.purr.backends.utilities import evaluate_shape
-from qat.purr.compiler.ir.analysis import Attribute, extract_iter_bounds
 from qat.purr.compiler.devices import PulseChannel
 from qat.purr.compiler.instructions import (
     Acquire,
@@ -40,6 +39,7 @@ from qat.purr.compiler.instructions import (
     Variable,
     Waveform,
 )
+from qat.purr.compiler.passbase import PassResultSet
 from qat.purr.utils.logger import get_default_logger
 
 log = get_default_logger()
@@ -75,14 +75,88 @@ class LabelManager:
         return f"{prefix}_{counter}"
 
 
-class FastQbloxEmitter(DfsTraversal, EmitterMixin):
-    def __init__(self, analyses: PassResultSet):
+class FastQbloxEmitter(DfsTraversal):
+    def __init__(self, result_set: PassResultSet):
         super().__init__()
-        self.targets: Set[PulseChannel] = analyses.get_result("QUANTUM_TARGETS")
-        self.cfg: ControlFlowGraph = analyses.get_result("CFG")
+        self.targets: Set[PulseChannel] = result_set.get_result(
+            CodegenPassRegistry.QUANTUM_TARGETS
+        )
+        self.cfg: ControlFlowGraph = result_set.get_result(CodegenPassRegistry.CFG)
         self.contexts: Dict[PulseChannel, FastQbloxContext] = {
             t: FastQbloxContext() for t in self.targets
         }
+
+    def enter(self, block):
+        iterator = block.iterator()
+        while (i := next(iterator, None)) is not None:
+            inst = self.instructions[i]
+            if isinstance(inst, Repeat):
+                FastQbloxContext.enter_repeat(inst, self.contexts)
+            elif isinstance(inst, Sweep):
+                FastQbloxContext.enter_sweep(inst, self.contexts)
+            elif isinstance(inst, QuantumInstruction):
+                if isinstance(inst, PostProcessing):
+                    continue
+                elif isinstance(inst, Synchronize):
+                    FastQbloxContext.synchronize(inst, self.contexts)
+                    continue
+                elif isinstance(inst, PhaseReset):
+                    FastQbloxContext.reset_phase(inst, self.contexts)
+                    continue
+
+                for target in inst.quantum_targets:
+                    context = self.contexts[target]
+                    if isinstance(inst, DeviceUpdate):
+                        context.device_update(inst)
+                    if isinstance(inst, MeasurePulse):
+                        j = next(iterator, None)
+                        if j is None or not isinstance(
+                            acquire := self.instructions[j], Acquire
+                        ):
+                            raise ValueError(
+                                "Found a MeasurePulse but no Acquire instruction followed"
+                            )
+                        scope_heads = [self.instructions[b.head()] for b in self._entered]
+                        counts = [
+                            context.get_attribute(h, "iter_bounds")[-1] or 1
+                            for h in scope_heads
+                        ]
+                        context.set_acq_size(acquire, reduce(mul, counts, 1))
+                        context.measure_acquire(inst, acquire, target)
+                    elif isinstance(inst, Waveform):
+                        context.waveform(inst, target)
+                    elif isinstance(inst, Delay):
+                        context.delay(inst)
+                    elif isinstance(inst, PhaseShift):
+                        context.shift_phase(inst)
+                    elif isinstance(inst, FrequencyShift):
+                        context.shift_frequency(inst, target)
+                    elif isinstance(inst, Id):
+                        context.id()
+
+    def exit(self, block):
+        iterator = block.iterator()
+        while (i := next(iterator, None)) is not None:
+            inst = self.instructions[i]
+            if isinstance(inst, Repeat):
+                FastQbloxContext.exit_repeat(inst, self.contexts)
+            elif isinstance(inst, Sweep):
+                FastQbloxContext.exit_sweep(inst, self.contexts)
+
+    def emit_packages(self) -> List[QbloxPackage]:
+        FastQbloxContext.prologue(self.contexts)
+        self.run(self.cfg)
+        FastQbloxContext.epilogue(self.contexts)
+
+        # Remove empty contexts
+        self.contexts = {t: c for t, c in self.contexts.items() if not c.is_empty()}
+
+        # Remove Opcode.WAIT_SYNC instructions when the experiment contains only a singleton context
+        if len(self.contexts) == 1:
+            context = next(iter(self.contexts.values()))
+            context.builder.optimize()
+
+        return [context.create_package(target) for target, context in self.contexts.items()]
 
     def _init_contexts(self, contexts) -> Dict:
         targets: Set[PulseChannel] = set()
@@ -149,80 +223,6 @@ class FastQbloxEmitter(DfsTraversal, EmitterMixin):
                 for target in inst.quantum_targets:
                     contexts[target].allocate_register(inst)
         return contexts
-
-    def enter(self, block):
-        iterator = block.iterator()
-        while (i := next(iterator, None)) is not None:
-            inst = self.instructions[i]
-            if isinstance(inst, Repeat):
-                FastQbloxContext.enter_repeat(inst, self.contexts)
-            elif isinstance(inst, Sweep):
-                FastQbloxContext.enter_sweep(inst, self.contexts)
-            elif isinstance(inst, QuantumInstruction):
-                if isinstance(inst, PostProcessing):
-                    continue
-                elif isinstance(inst, Synchronize):
-                    FastQbloxContext.synchronize(inst, self.contexts)
-                    continue
-                elif isinstance(inst, PhaseReset):
-                    FastQbloxContext.reset_phase(inst, self.contexts)
-                    continue
-
-                for target in inst.quantum_targets:
-                    context = self.contexts[target]
-                    if isinstance(inst, DeviceUpdate):
-                        context.device_update(inst)
-                    if isinstance(inst, MeasurePulse):
-                        j = next(iterator, None)
-                        if j is None or not isinstance(
-                            acquire := self.instructions[j], Acquire
-                        ):
-                            raise ValueError(
-                                "Found a MeasurePulse but no Acquire instruction followed"
-                            )
-                        scope_heads = [self.instructions[b.head()] for b in self._entered]
-                        counts = [
-                            context.get_attribute(h, "iter_bounds")[-1] or 1
-                            for h in scope_heads
-                        ]
-                        context.set_acq_size(acquire, reduce(mul, counts, 1))
-                        context.measure_acquire(inst, acquire, target)
-                    elif isinstance(inst, Waveform):
-                        context.waveform(inst, target)
-                    elif isinstance(inst, Delay):
-                        context.delay(inst)
-                    elif isinstance(inst, PhaseShift):
-                        context.shift_phase(inst)
-                    elif isinstance(inst, FrequencyShift):
-                        context.shift_frequency(inst, target)
-                    elif isinstance(inst, Id):
-                        context.id()
-
-    def exit(self, block):
-        iterator = block.iterator()
-        while (i := next(iterator, None)) is not None:
-            inst = self.instructions[i]
-            if isinstance(inst, Repeat):
-                FastQbloxContext.exit_repeat(inst, self.contexts)
-            elif isinstance(inst, Sweep):
-                FastQbloxContext.exit_sweep(inst, self.contexts)
-
-    def emit_packages(self) -> List[QbloxPackage]:
-        cfg = self.emit_cfg()
-
-        FastQbloxContext.prologue(self.contexts)
-        self.run(cfg)
-        FastQbloxContext.epilogue(self.contexts)
-
-        # Remove empty contexts
-        self.contexts = {t: c for t, c in self.contexts.items() if not c.is_empty()}
-
-        # Remove Opcode.WAIT_SYNC instructions when the experiment contains only a singleton context
-        if len(self.contexts) == 1:
-            context = next(iter(self.contexts.values()))
-            context.builder.optimize()
-
-        return [context.create_package(target) for target, context in self.contexts.items()]
 
 
 class FastQbloxContext:

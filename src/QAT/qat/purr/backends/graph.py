@@ -1,7 +1,5 @@
 from typing import List
 
-from qat.purr.compiler.instructions import Instruction
-
 
 class BasicBlock:
     def __init__(self, indices=None):
@@ -63,34 +61,3 @@ class ControlFlowGraph:
 
     def in_edges(self, node) -> List[Flow]:
         return [e for e in self.edges if e.dest == node]
-
-
-class DfsTraversal:
-    def __init__(self):
-        self._entered: List[BasicBlock] = []
-
-    def clear(self):
-        self._entered.clear()
-
-    def run(self, graph: ControlFlowGraph):
-        self.clear()
-        self._visit(graph.entry, graph)
-
-    def _visit(self, node: BasicBlock, graph: ControlFlowGraph):
-        self.enter(node)
-        self._entered.append(node)
-        for neighbour in graph.out_nbrs(node):
-            if neighbour not in self._entered:
-                self._visit(neighbour, graph)
-        self.exit(node)
-
-    def enter(self, node: BasicBlock):
-        pass
-
-    def exit(self, node: BasicBlock):
-        pass
-
-
-class EmitterMixin:
-    def __init__(self, instructions: List[Instruction]):
-        self.instructions = instructions

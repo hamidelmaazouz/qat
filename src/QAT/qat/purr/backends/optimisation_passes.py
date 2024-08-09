@@ -1,26 +1,14 @@
-from abc import abstractmethod
-
-from qat.purr.compiler.ir.pass_base import PassInfoMixin, PassResultSet
+from qat.purr.backends.codegen import CodegenPassRegistry
 from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
 from qat.purr.compiler.builders import InstructionBuilder
 from qat.purr.compiler.instructions import Repeat, Sweep, SweepValue
-from qat.purr.compiler.ir.pass_pipeline import PassRegistry
+from qat.purr.compiler.passbase import TransformPass
 from qat.purr.utils.algorithm import stable_partition
-
-
-class TransformPass(PassInfoMixin):
-    def run(self, ir, *args, **kwargs):
-        self.do_run(ir, *args, **kwargs)
-        return PassResultSet()
-
-    @abstractmethod
-    def do_run(self, ir, *args, **kwargs):
-        pass
 
 
 class SweepDecomposition(TransformPass):
     def id(self):
-        return PassRegistry.SWEEP_DECOMPOSITION
+        return CodegenPassRegistry.SWEEP_DECOMPOSITION
 
     def do_run(self, builder: InstructionBuilder, *args, **kwargs):
         """
@@ -38,7 +26,7 @@ class SweepDecomposition(TransformPass):
 
 class ScopeBalancing(TransformPass):
     def id(self):
-        return PassRegistry.SCOPE_BALANCING
+        return CodegenPassRegistry.SCOPE_BALANCING
 
     def do_run(self, builder: InstructionBuilder, *args):
         """

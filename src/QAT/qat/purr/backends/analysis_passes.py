@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from typing import Any, Union, List
+from typing import Any, List, Union
 
 import numpy as np
 
-from qat.purr.compiler.ir.analysis import AnalysisPass
-from qat.purr.compiler.ir.pass_base import PassResultSet
-from qat.purr.backends.qblox.graph import ControlFlowGraph
+from qat.purr.backends.codegen import CodegenPassRegistry
+from qat.purr.backends.graph import ControlFlowGraph
 from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
 from qat.purr.compiler.builders import InstructionBuilder
 from qat.purr.compiler.instructions import (
@@ -16,7 +15,7 @@ from qat.purr.compiler.instructions import (
     Repeat,
     Sweep,
 )
-from qat.purr.compiler.ir.pass_pipeline import PassRegistry
+from qat.purr.compiler.passbase import AnalysisPass, PassResultSet
 
 
 @dataclass
@@ -27,7 +26,7 @@ class Attribute:
 
 class QuantumTargetAnalysis(AnalysisPass):
     def id(self):
-        return PassRegistry.QUANTUM_TARGETS
+        return CodegenPassRegistry.QUANTUM_TARGETS
 
     def run(self, builder: InstructionBuilder, *args, **kwargs):
         """
@@ -50,7 +49,7 @@ class QuantumTargetAnalysis(AnalysisPass):
 
 class IterBoundsAnalysis(AnalysisPass):
     def id(self):
-        return PassRegistry.ITER_BOUNDS
+        return CodegenPassRegistry.ITER_BOUNDS
 
     @staticmethod
     def extract_iter_bounds(value: Union[List, np.ndarray]):
@@ -124,7 +123,7 @@ class IterBoundsAnalysis(AnalysisPass):
 
 class CFGAnalysis(AnalysisPass):
     def id(self):
-        return PassRegistry.CFG
+        return CodegenPassRegistry.CFG
 
     def run(self, builder: InstructionBuilder, *args, **kwargs):
         result = ControlFlowGraph()
@@ -212,7 +211,7 @@ class CtrlHwAnalysis(AnalysisPass):
     """
 
     def id(self):
-        return PassRegistry.CTRL_HW
+        return CodegenPassRegistry.CTRL_HW
 
     def run(self, builder: InstructionBuilder, *args, **kwargs):
         pass
@@ -226,7 +225,7 @@ class TimelineAnalysis(AnalysisPass):
     """
 
     def id(self):
-        return PassRegistry.TIMELINE
+        return CodegenPassRegistry.TIMELINE
 
     def run(self, builder: InstructionBuilder, *args, **kwargs):
         pass

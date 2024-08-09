@@ -1,6 +1,8 @@
 from qat.purr.backends.qblox.instructions import EndRepeat, EndSweep
-from qat.purr.backends.validation import ValidationPass
 from qat.purr.compiler.instructions import Repeat, Sweep
+from qat.purr.compiler.passbase import ValidationPass
+
+# TODO - bring in stuff in verification.py in here in the form of a pass (or a bunch of passes)
 
 
 class ScopeBalanceValidation(ValidationPass):

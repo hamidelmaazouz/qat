@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 @dataclass(frozen=True)
@@ -83,3 +83,66 @@ class PassInfoMixin:
 
     def name(self):
         return self.id()
+
+
+class AnalysisPass(PassInfoMixin):
+    """
+    Computes some form of analysis on the IR and returns it.
+    The IR is imperatively left intact
+    """
+
+    def run(self, ir, *args, **kwargs):
+        pass
+
+
+class TransformPass(PassInfoMixin):
+    """
+    A base pass that mutates the IR in-place.
+    """
+
+    def run(self, ir, *args, **kwargs):
+        self.do_run(ir, *args, **kwargs)
+        return PassResultSet()
+
+    @abstractmethod
+    def do_run(self, ir, *args, **kwargs):
+        pass
+
+
+class ValidationPass(PassInfoMixin):
+    """
+    A base pass to validates semantics and enforce legalisation on the IR.
+    """
+
+    def run(self, ir, *args, **kwargs):
+        self.do_run(ir, args, kwargs)
+        return PassResultSet()
+
+    @abstractmethod
+    def do_run(self, ir, *args, **kwargs):
+        pass
+
+
+class PassManager(PassInfoMixin):
+    """
+    The pass manager acts as a pass itself. In doing so, it runs a sequence of passes over some unit of IR
+    and aggregates results from them.
+
+    Result aggregation could potentially involve caching invalidation concepts as described in
+    PassResultSet.
+
+    For today's needs, it just accumulates and returns a set of results from the passes.
+    """
+
+    def __init__(self):
+        self.passes: List[PassModel] = []
+
+    def run(self, ir, *args, **kwargs):
+        global_rs = PassResultSet()
+        for p in self.passes:
+            pass_rs = p.run(ir, *args, **kwargs)
+            global_rs.update(pass_rs)
+        return global_rs
+
+    def add(self, pass_obj):
+        self.passes.append(PassModel(pass_obj))
