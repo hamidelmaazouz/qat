@@ -26,6 +26,7 @@ from qat.purr.compiler.instructions import (
     ResultsProcessing,
     Return,
     Sweep,
+    SweepValue,
     Variable,
 )
 
@@ -59,6 +60,7 @@ class TriagePass(AnalysisPass):
         """
 
         targets = set()
+        reads: Dict[PulseChannel, Set[str]] = defaultdict(set)
         for inst in builder.instructions:
             if isinstance(inst, QuantumInstruction):
                 if isinstance(inst, PostProcessing):
@@ -70,9 +72,27 @@ class TriagePass(AnalysisPass):
                 else:
                     targets.update(inst.quantum_targets)
 
+            if isinstance(inst, DeviceUpdate) or isinstance(inst, Pulse):
+                names = (
+                    [inst.value.name]
+                    if isinstance(inst, DeviceUpdate) and isinstance(inst.value, Variable)
+                    else (
+                        [
+                            var.name
+                            for var in inst.__dict__.values()
+                            if isinstance(var, Variable)
+                        ]
+                        if isinstance(inst, Pulse)
+                        else []
+                    )
+                )
+
+                for target in inst.quantum_targets:
+                    reads[target].update(names)
+
         result = TriageResult()
         for inst in builder.instructions:
-            # View instructions by target
+            # Dissect by target
             if isinstance(inst, QuantumInstruction):
                 for qt in inst.quantum_targets:
                     if isinstance(qt, Acquire):
@@ -80,6 +100,19 @@ class TriagePass(AnalysisPass):
                             result.target_map[aqt].append(inst)
                     else:
                         result.target_map[qt].append(inst)
+            elif isinstance(inst, Sweep):
+                count = len(next(iter(inst.variables.values())))
+                for t in targets:
+                    variables = [
+                        SweepValue(name, value)
+                        for name, value in inst.variables.items()
+                        if name in reads[t]
+                    ] or [
+                        SweepValue(
+                            f"sweep_{hash(inst)}", np.linspace(1, count, count, dtype=int)
+                        )
+                    ]
+                    result.target_map[t].append(Sweep(variables))
             else:
                 for t in targets:
                     result.target_map[t].append(inst)
