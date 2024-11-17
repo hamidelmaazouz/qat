@@ -400,6 +400,7 @@ class TILegalisationPass(AnalysisPass):
             if attribute == "width":
                 return bound
             elif attribute == "amp":
+                # TODO: buf = inst.scale_factor * inst.amp * np.exp(1.0j * inst.phase) * ones
                 return bound
             else:
                 raise NotImplementedError(

@@ -24,7 +24,7 @@ from qat.purr.compiler.instructions import Acquire, MeasurePulse, Pulse
 from qat.purr.compiler.runtime import get_builder
 from qat.purr.utils.logger import get_default_logger
 
-from tests.qat.utils.builder_nuggets import qubit_spect, resonator_spect
+from tests.qat.utils.builder_nuggets import qubit_spect, rabi_time, resonator_spect
 
 log = get_default_logger()
 
@@ -446,3 +446,40 @@ class TestNewQbloxEmitter(InvokerMixin):
                 assert "play" in acquire_pkg.sequence.program
                 assert "set_awg_offs" not in acquire_pkg.sequence.program
                 assert "upd_param" not in acquire_pkg.sequence.program
+
+    @pytest.mark.parametrize("qubit_indices", [[0], [0, 1]])
+    def test_compile_rabi(self, model, qubit_indices):
+        res_mgr = ResultManager()
+        builder = rabi_time(model)
+        engine = model.create_engine()
+        runtime = model.create_runtime()
+        runtime.run_pass_pipeline(builder, res_mgr, model, engine)
+
+        self.run_pass_pipeline(builder, res_mgr, model)
+        packages = NewQbloxEmitter().emit_packages(builder, res_mgr, model)
+        assert len(packages) == 2
+
+        for index in qubit_indices:
+            qubit = model.get_qubit(index)
+            drive_channel = qubit.get_drive_channel()
+            drive_pkg = next((pkg for pkg in packages if pkg.target == drive_channel))
+            acquire_channel = qubit.get_acquire_channel()
+            acquire_pkg = next((pkg for pkg in packages if pkg.target == acquire_channel))
+
+            drive_pulse = next(
+                (
+                    inst
+                    for inst in builder.instructions
+                    if isinstance(inst, Pulse)
+                    and drive_channel in inst.quantum_targets
+                )
+            )
+
+            measure_pulse = next(
+                (
+                    inst
+                    for inst in builder.instructions
+                    if isinstance(inst, MeasurePulse)
+                    and acquire_channel in inst.quantum_targets
+                )
+            )

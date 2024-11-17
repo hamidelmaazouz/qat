@@ -877,6 +877,51 @@ class NewQbloxContext:
         self._timeline = np.append(self._timeline, [0] * num_samples)
 
     def waveform(self, waveform: Waveform, target: PulseChannel):
+        attr2reg = {
+            attr: self.alloc_mgr.registers[var.name]
+            for attr, var in waveform.__dict__.items()
+            if isinstance(var, Variable)
+        }
+
+        if isinstance(waveform, Pulse) and waveform.shape == PulseShapeType.SQUARE:
+            if "amp" in attr2reg:
+                i_offs_steps = attr2reg["amp"]
+                q_offs_steps = 0
+            else:
+                i_offs_steps = int(
+                    waveform.amp * (Constants.MAX_OFFSET_SIZE // 2)
+                )
+                q_offs_steps = 0
+
+            if "width" in attr2reg:
+                duration = attr2reg["width"]
+            else:
+                duration = calculate_duration(waveform, return_samples=True)
+
+            self.sequence_builder.set_awg_offs(i_offs_steps, q_offs_steps)
+            self.sequence_builder.upd_param(duration)
+            self.sequence_builder.set_awg_offs(0, 0)
+            self.sequence_builder.upd_param(Constants.GRID_TIME)
+        elif isinstance(waveform, Pulse) and attr2reg:
+            raise ValueError(f"Cannot evaluate parametrised non trivial waveform {waveform}")
+        else:
+            pulse = self._evaluate_waveform(waveform, target)
+            if pulse is None:
+                log.warning("This pulse will be ignored.")
+                return
+
+            num_samples = pulse.size
+            max_duration = min(num_samples, Constants.MAX_WAIT_TIME)
+
+            i_index, q_index = self._register_waveform(waveform, target, pulse)
+            self.sequence_builder.play(i_index, q_index, max_duration)
+            self._wait_seconds((num_samples - max_duration) / 1e9)
+
+            self._duration = self._duration + waveform.duration
+            self._timeline = np.append(self._timeline, pulse)
+
+        ######
+
         pulse = self._evaluate_waveform(waveform, target)
         if pulse is None:
             log.warning("This pulse will be ignored.")

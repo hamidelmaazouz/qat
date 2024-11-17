@@ -80,3 +80,33 @@ def qubit_spect(model, qubit_indices=None, num_points=None):
         builder.measure_mean_signal(qubit, output_variable=f"Q{index}")
         builder.repeat(1000, 500e-6)
     return builder
+
+
+def rabi_time(model, time_start=0, width=10e-6, qubit_indices=None):
+    qubit_indices = qubit_indices or [0]
+    num_points = 10
+    drive_rate = 5e6
+
+    time = np.linspace(time_start, time_start + width, num_points)
+    var_name = "t"
+
+    builder = get_builder(model)
+    builder.synchronize([model.get_qubit(index) for index in qubit_indices])
+    builder.sweep(SweepValue(var_name, time))
+    for index in qubit_indices:
+        qubit = model.get_qubit(index)
+        builder.pulse(
+            qubit.get_drive_channel(),
+            PulseShapeType.SQUARE,
+            width=Variable(var_name),
+            amp=drive_rate,
+            phase=0.0,
+            drag=0.0,
+            rise=1.0 / 3.0,
+        )
+
+    builder.synchronize([model.get_qubit(index) for index in qubit_indices])
+    for index in qubit_indices:
+        qubit = model.get_qubit(index)
+        builder.measure_mean_signal(qubit, f"Q{qubit.index}")
+    return builder
